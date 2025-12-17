@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:15
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+  api:
+    build: ./worker
+    restart: unless-stopped
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      CURRENCY_RATES_URL: ${CURRENCY_RATES_URL}
+      REFERENCE_CURRENCY: ${REFERENCE_CURRENCY}
+      PRIMARY_QUOTE_CURRENCY: ${PRIMARY_QUOTE_CURRENCY}
+      SECONDARY_QUOTE_CURRENCY: ${SECONDARY_QUOTE_CURRENCY}
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+
+  bot:
+    build: ./bot
+    restart: unless-stopped
+    depends_on:
+      - api
+    env_file:
+      - .env
+
+volumes:
+  db_data:
