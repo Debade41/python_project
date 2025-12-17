@@ -5,7 +5,7 @@ from datetime import datetime
 
 st.set_page_config(page_title="Currency Bot Dashboard", layout="wide")
 st.title("📊 Панель управления Currency Bot")
-API_BASE_URL = st.secrets.get("API_BASE_URL", "http://worker:8000")  
+API_BASE_URL = "http://api:8000"
 
 
 st.header("🧪 Тестовый парсер валют")
