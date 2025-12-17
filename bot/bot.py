@@ -96,8 +96,7 @@ def handle_text(update: Update, _: CallbackContext) -> None:
     text = message.text.strip()
     if text.startswith("/"):
         return
-    _send_analysis(update, text)
-
+    _send_currency_conversions(update, text)
 
 def convert(update: Update, context: CallbackContext) -> None:
     args = context.args
