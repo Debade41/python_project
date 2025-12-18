@@ -2,7 +2,7 @@ import logging
 from typing import Any, Dict, List
 
 import requests
-from telegram import Update
+from telegram import KeyboardButton, ReplyKeyboardMarkup, Update
 from telegram.ext import (
     CallbackContext,
     CommandHandler,
@@ -24,6 +24,17 @@ def _format_amount(value: float) -> str:
     return formatted.replace(",", " ")
 
 
+MAIN_MENU_BUTTONS = [
+    ["🧪 Анализ текста", "💱 Конвертация"],
+    ["🕘 История", "📖 FAQ"],
+    ["🆘 Техподдержка"],
+]
+
+
+def _main_menu_keyboard() -> ReplyKeyboardMarkup:
+    return ReplyKeyboardMarkup(MAIN_MENU_BUTTONS, resize_keyboard=True)
+
+
 def call_worker(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     url = f"{settings.api_base_url}{endpoint}"
     response = requests.post(url, json=payload, timeout=10)
@@ -34,11 +45,14 @@ def call_worker(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 def greet(update: Update, _: CallbackContext) -> None:
     text = (
         "Привет! Я анализирую текст и конвертирую валюту.\n"
-        "Отправьте любое сообщение для анализа" \
-        " и получите конвертацию в несколько валют!"
-        "Инспользуй /history [число] для просмотра истории конвертации" \
+        "Отправьте любое сообщение и бот найдёт суммы и сконвертирует их.\n"
+        "Используйте /convert <сумма> <из> <в> для явной конвертации или /history [число] для просмотра истории."
     )
-    update.message.reply_text(text)
+    update.message.reply_text(text, reply_markup=_main_menu_keyboard())
+
+
+def _respond_with_menu_text(update: Update, text: str) -> None:
+    update.effective_message.reply_text(text, reply_markup=_main_menu_keyboard())
 
 
 def analyze(update: Update, context: CallbackContext) -> None:
@@ -99,7 +113,34 @@ def handle_text(update: Update, _: CallbackContext) -> None:
     text = message.text.strip()
     if text.startswith("/"):
         return
+    if text in {"🧪 Анализ текста", "💱 Конвертация", "🕘 История", "📖 FAQ", "🆘 Техподдержка"}:
+        if text == "🧪 Анализ текста":
+            _respond_with_menu_text(
+                update, "Пришлите текст или используйте /analyze <текст>, чтобы получить статистику."
+            )
+        elif text == "💱 Конвертация":
+            _respond_with_menu_text(
+                update, "Команда /convert <сумма> <из> <в> рассчитает конвертацию, например /convert 10 USD RUB."
+            )
+        elif text == "🕘 История":
+            _respond_with_menu_text(update, "Команда /history [число] вернёт последние операции. Пример: /history 10.")
+        elif text == "📖 FAQ":
+            _respond_with_menu_text(
+                update,
+                "Частые вопросы:\n"
+                "• /analyze <текст> — получить статистику.\n"
+                "• /convert <сумма> <из> <в> — ручная конвертация.\n"
+                "• /history [число] — история операций.",
+            )
+        elif text == "🆘 Техподдержка":
+            _respond_with_menu_text(
+                update,
+                "Напишите нам: https://t.me/warblow51",
+            )
+        return
     _send_currency_conversions(update, text)
+
+
 def history(update: Update, context: CallbackContext) -> None:
     """Показывает историю конвертаций из API"""
     # Получаем количество записей
