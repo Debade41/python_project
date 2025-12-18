@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import requests
 import pandas as pd
@@ -7,8 +8,10 @@ import time
 st.set_page_config(page_title="Currency Bot Dashboard", layout="wide")
 st.title("📊 Панель управления Currency Bot")
 
-# Конфигурация
-API_BASE_URL = st.secrets.get("API_BASE_URL", "http://api:8000")
+try:
+    API_BASE_URL = st.secrets["API_BASE_URL"]
+except Exception:
+    API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
 # 1. Секция для тестирования парсера
 st.header("🧪 Тестовый парсер валют")
