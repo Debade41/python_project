@@ -99,7 +99,12 @@ def detect_currencies(payload: CurrencyDetectionRequest) -> CurrencyDetectionRes
         normalized = code.upper()
         if normalized not in target_currencies:
             target_currencies.append(normalized)
-
+    for code in settings.additional_quote_currencies:
+        if not code:
+            continue
+        normalized = code.upper()
+        if normalized not in target_currencies:
+            target_currencies.append(normalized)
     mentions = extract_currency_mentions(payload.text)
     items: list[DetectedCurrency] = []
     for mention in mentions:

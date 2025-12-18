@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     reference_currency: str = "RUB"
     primary_quote_currency: str = "RUB"
     secondary_quote_currency: str | None = "USD"
-
+    additional_quote_currencies: List[str] = ["EUR", "CNY", "KZT"]
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

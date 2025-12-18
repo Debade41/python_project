@@ -34,8 +34,8 @@ def call_worker(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 def greet(update: Update, _: CallbackContext) -> None:
     text = (
         "Привет! Я анализирую текст и конвертирую валюту.\n"
-        "Отправьте любое сообщение для анализа или используйте команду \n"
-        "/convert <сумма> <из> <в>, например /convert 100 USD EUR"
+        "Отправьте любое сообщение для анализа" \
+        "и получите конвертацию в несколько валют!"
     )
     update.message.reply_text(text)
 
@@ -75,6 +75,7 @@ def _send_currency_conversions(update: Update, text: str) -> None:
 
     items: List[Dict[str, Any]] = payload.get("items") or []
     if not items:
+        update.message.reply_text("В тексте не найдено упоминаний валют")
         return
 
     lines = ["Конвертация найденных сумм:"]
