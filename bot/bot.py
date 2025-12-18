@@ -76,7 +76,8 @@ def _send_currency_conversions(update: Update, text: str) -> None:
 
     items: List[Dict[str, Any]] = payload.get("items") or []
     if not items:
-        update.message.reply_text("В тексте не найдено упоминаний валют")
+        if update.message.chat.type == "private": 
+            update.message.reply_text("В тексте не найдено упоминаний валют")
         return
 
     lines = ["Конвертация найденных сумм:"]
