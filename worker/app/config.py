@@ -1,6 +1,6 @@
 from functools import lru_cache
 from pydantic_settings import BaseSettings
-
+from typing import List
 
 class Settings(BaseSettings):
     app_name: str = "Currency Text Analyzer API"
