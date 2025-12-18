@@ -90,7 +90,10 @@ def convert(
 
 
 @app.post("/detect-currencies", response_model=CurrencyDetectionResponse)
-def detect_currencies(payload: CurrencyDetectionRequest) -> CurrencyDetectionResponse:
+def detect_currencies(
+    payload: CurrencyDetectionRequest, 
+    session: Session = Depends(get_db)
+) -> CurrencyDetectionResponse:
     primary_currency = (payload.quote_currency or settings.primary_quote_currency).upper()
     target_currencies: list[str] = []
     for code in (primary_currency, settings.secondary_quote_currency):
@@ -105,15 +108,39 @@ def detect_currencies(payload: CurrencyDetectionRequest) -> CurrencyDetectionRes
         normalized = code.upper()
         if normalized not in target_currencies:
             target_currencies.append(normalized)
+    
     mentions = extract_currency_mentions(payload.text)
     items: list[DetectedCurrency] = []
+    
     for mention in mentions:
         conversions: list[CurrencyConversionDetail] = []
-        for quote_currency in target_currencies:
+        
+     
+        valid_targets = [c for c in target_currencies if c != mention.currency]
+        
+        for quote_currency in valid_targets:
             try:
                 rate, converted = convert_currency(mention.amount, mention.currency, quote_currency)
             except CurrencyServiceError:
                 continue
+            
+          
+            db_item = models.CurrencyConversion(
+                amount=mention.amount,
+                base_currency=mention.currency.upper(),
+                quote_currency=quote_currency.upper(),
+                rate=rate,
+                converted_amount=converted,
+            )
+            try:
+                session.add(db_item)
+                session.commit()
+            
+            except SQLAlchemyError as exc:
+                session.rollback()
+          
+                logger.error(f"Failed to save conversion to DB: {exc}")
+            
             conversions.append(
                 CurrencyConversionDetail(
                     quote_currency=quote_currency,
@@ -121,6 +148,7 @@ def detect_currencies(payload: CurrencyDetectionRequest) -> CurrencyDetectionRes
                     rate=rate,
                 )
             )
+        
         if not conversions:
             continue
         items.append(
@@ -133,6 +161,7 @@ def detect_currencies(payload: CurrencyDetectionRequest) -> CurrencyDetectionRes
                 end_index=mention.end,
             )
         )
+    
     return CurrencyDetectionResponse(items=items)
 
 

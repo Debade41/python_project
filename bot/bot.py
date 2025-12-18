@@ -36,6 +36,7 @@ def greet(update: Update, _: CallbackContext) -> None:
         "Привет! Я анализирую текст и конвертирую валюту.\n"
         "Отправьте любое сообщение для анализа" \
         " и получите конвертацию в несколько валют!"
+        "Инспользуй /history [число] для просмотра истории конвертации" \
     )
     update.message.reply_text(text)
 
@@ -98,7 +99,55 @@ def handle_text(update: Update, _: CallbackContext) -> None:
     if text.startswith("/"):
         return
     _send_currency_conversions(update, text)
-
+def history(update: Update, context: CallbackContext) -> None:
+    """Показывает историю конвертаций из API"""
+    # Получаем количество записей
+    args = context.args
+    limit = 5
+    
+    if args:
+        try:
+            limit = int(args[0])
+            limit = max(1, min(limit, 20))
+        except ValueError:
+            update.message.reply_text(
+                "❌ Используйте: /history [число]. Пример: /history 10"
+            )
+            return
+    
+    try:
+       
+        url = f"{settings.api_base_url}/history?limit={limit}"
+        response = requests.get(url, timeout=5)
+        response.raise_for_status()
+        data = response.json()
+    except requests.RequestException:
+        logger.exception("Failed to fetch history")
+        update.message.reply_text("📛 История временно недоступна.")
+        return
+    
+    conversions = data.get("conversions", [])
+    
+    if not conversions:
+        update.message.reply_text("📭 История конвертаций пуста.")
+        return
+    
+ 
+    lines = [f"📜 *Последние {len(conversions)} конвертаций:*\n"]
+    
+    for i, conv in enumerate(conversions, 1):
+        time_str = conv.get("created_at", "").replace("T", " ")[11:16]  # ЧЧ:MM
+        
+        lines.append(
+            f"{i}. *{conv['amount']:.2f} {conv['base_currency']}* → "
+            f"*{conv['converted_amount']:.2f} {conv['quote_currency']}*\n"
+            f"   Курс: {conv['rate']:.4f} | Время: {time_str}\n"
+        )
+    
+    
+    lines.append(f"\n🌐 *Полная история:* http://localhost:8501")
+    
+    update.message.reply_text("\n".join(lines), parse_mode="Markdown")
 def convert(update: Update, context: CallbackContext) -> None:
     args = context.args
     if len(args) != 3:
@@ -151,6 +200,7 @@ def main() -> None:
     dispatcher.add_handler(CommandHandler("help", greet))
     dispatcher.add_handler(CommandHandler("analyze", analyze))
     dispatcher.add_handler(CommandHandler("convert", convert))
+    dispatcher.add_handler(CommandHandler("history", history))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text))
 
     logger.info("Starting Telegram bot")
