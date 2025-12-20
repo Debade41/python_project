@@ -21,7 +21,7 @@ CURRENCY_ALIASES = {
 _alias_tokens = sorted({alias for aliases in CURRENCY_ALIASES.values() for alias in aliases}, key=len, reverse=True)
 _alias_group = "|".join(re.escape(token) for token in _alias_tokens)
 
-AMOUNT_RE = r"\d[\d\s\u00A0\u202F]*(?:[.,]\d+)?"
+AMOUNT_RE = r"\d[\d\s\u00A0\u202F]*(?:[.,]\d+)?\s*[кkмm]?"
 _CURRENCY_RE = rf"(?:{_alias_group}|[A-Za-z]{{3}}|[$€£¥₽])"
 
 CURRENCY_AFTER = re.compile(rf"(?P<amount>{AMOUNT_RE})\s*(?P<currency>{_CURRENCY_RE})", re.IGNORECASE)
@@ -38,12 +38,34 @@ class CurrencyMention:
 
 
 def _normalize_amount(value: str) -> float | None:
+    value_lower=value.lower().strip()
     sanitized = (
         value.replace("\u00A0", "")
         .replace("\u202F", "")
         .replace(" ", "")
         .replace(",", ".")
     )
+    multiplier = 1
+    if sanitized.endswith('.'):
+        sanitized = sanitized[:-1]
+    if sanitized.endswith('к') or sanitized.endswith('k'):
+        multiplier = 1000
+        sanitized = sanitized[:-1]
+    elif sanitized.endswith('тыс'):
+        multiplier = 1000
+        sanitized = sanitized[:-3]
+    elif sanitized.endswith('м') or sanitized.endswith('m'):
+        multiplier = 1_000_000
+        sanitized = sanitized[:-1]
+    elif sanitized.endswith('млн'):
+        multiplier = 1_000_000
+        sanitized = sanitized[:-3]
+
+
+
+
+
+    sanitized = re.sub(r'[^\d.-]', '', sanitized)
     try:
         return float(sanitized)
     except ValueError:

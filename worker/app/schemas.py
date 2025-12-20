@@ -21,11 +21,9 @@ class AnalysisResponse(BaseModel):
 
 
 class ConversionRequest(BaseModel):
-    amount: float = Field(..., gt=0)
+    amount: float = Field(..., gt=0)  # Оставляем как float
     base_currency: str = Field(..., min_length=3, max_length=4)
     quote_currency: str = Field(..., min_length=3, max_length=4)
-
-
 class ConversionResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

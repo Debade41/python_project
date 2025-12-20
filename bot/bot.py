@@ -1,4 +1,5 @@
 import logging
+import re
 from typing import Any, Dict, List
 
 import requests
@@ -48,7 +49,7 @@ def greet(update: Update, _: CallbackContext) -> None:
     text = (
         "Привет! Я анализирую текст и конвертирую валюту.\n"
         "Отправьте любое сообщение и бот найдёт суммы и сконвертирует их.\n"
-        "Используйте /convert <сумма> <из> <в> для явной конвертации или /history [число] для просмотра истории."
+        "Используйте /convert <сумма> <из> <в> для явной конвертации или /history <число> для просмотра истории."
     )
     update.message.reply_text(text, reply_markup=_main_menu_keyboard())
 
@@ -147,7 +148,7 @@ def handle_text(update: Update, _: CallbackContext) -> None:
 
 def history(update: Update, context: CallbackContext) -> None:
     """Показывает историю конвертаций из API"""
-    # Получаем количество записей
+    
     args = context.args
     limit = 5
     
@@ -218,22 +219,31 @@ def convert(update: Update, context: CallbackContext) -> None:
     args = context.args
     if len(args) != 3:
         update.message.reply_text(
-            "Используйте формат: /convert <сумма> <из> <в>. Пример: /convert 10 USD RUB"
+            "🔄 *Используйте:* `/convert <сумма> <из> <в>`\n\n"
+            "📝 *Примеры:*\n"
+            "• `/convert 100 USD RUB`\n"
+            "• `/convert 1.5к EUR USD` (1.5к = 1500)\n"
+            "• `/convert 2.5м RUB USD` (2.5м = 2,500,000)\n"
+            "• `/convert 5000 ¥ EUR`\n\n"
+            "💡 *Поддерживаются:* к=×1000, м=×1,000,000",
+            parse_mode="Markdown"
         )
         return
-
+    
     amount_text, base, quote = args
+    
     try:
-        amount = float(amount_text)
-    except ValueError:
-        update.message.reply_text("Сумма должна быть числом")
+        
+        amount = _parse_amount_with_suffix(amount_text)
+    except ValueError as e:
+        update.message.reply_text(f"❌ Ошибка в сумме: {str(e)}")
         return
-
+    
     try:
         data = call_worker(
             "/convert",
             {
-                "amount": amount,
+                "amount": amount,  
                 "base_currency": base.upper(),
                 "quote_currency": quote.upper(),
             },
@@ -243,20 +253,58 @@ def convert(update: Update, context: CallbackContext) -> None:
             detail = http_exc.response.json().get("detail", "Ошибка конвертации")
             update.message.reply_text(detail)
         else:
-            update.message.reply_text("Не удалось конвертировать сейчас")
+            update.message.reply_text("❌ Не удалось конвертировать. Проверьте коды валют.")
         logger.exception("Conversion failed")
         return
     except requests.RequestException:
         logger.exception("Call to convert endpoint failed")
-        update.message.reply_text("Сервис недоступен. Попробуйте позже.")
+        update.message.reply_text("⚠️ Сервис недоступен. Попробуйте позже.")
         return
-
+    
+    def format_large_number(num):
+        if num >= 1_000_000:
+            return f"{num:,.0f}".replace(",", " ")
+        elif num >= 10_000:
+            return f"{num:,.0f}".replace(",", " ")
+        else:
+            return f"{num:,.2f}".replace(",", " ")
+    
     reply = (
-        f"{data['amount']} {data['base_currency']} = {data['converted_amount']} {data['quote_currency']}\n"
-        f"Курс: {data['rate']}"
+        f"💱 *Конвертация:*\n\n"
+        f"*{format_large_number(data['amount'])} {data['base_currency']}* =\n"
+        f"*{format_large_number(data['converted_amount'])} {data['quote_currency']}*\n\n"
+        f"📊 Курс: 1 {data['base_currency']} = {data['rate']:.6f} {data['quote_currency']}"
     )
-    update.message.reply_text(reply)
-
+    
+    update.message.reply_text(reply, parse_mode="Markdown")
+def _parse_amount_with_suffix(amount_text: str) -> float:
+    """Преобразует строку с 'к' или 'м' в число"""
+    amount_text = amount_text.strip().lower()
+    
+    multiplier = 1
+    if amount_text.endswith('к') or amount_text.endswith('k'):
+        multiplier = 1000
+        amount_text = amount_text[:-1]
+    elif amount_text.endswith('тыс'):
+        multiplier = 1000
+        amount_text = amount_text[:-3]
+    elif amount_text.endswith('м') or amount_text.endswith('m'):
+        multiplier = 1_000_000
+        amount_text = amount_text[:-1]
+    elif amount_text.endswith('млн'):
+        multiplier = 1_000_000
+        amount_text = amount_text[:-3]
+    
+   
+    amount_text = amount_text.replace(',', '.')
+    
+   
+    amount_text = re.sub(r'[^\d.-]', '', amount_text)
+    
+    try:
+        return float(amount_text) * multiplier
+    except ValueError:
+        raise ValueError(f"Не удалось распознать число: {amount_text}")
 
 def main() -> None:
     updater = Updater(token=settings.telegram_token, use_context=True)
