@@ -7,13 +7,13 @@ import time
 
 st.set_page_config(page_title="Currency Bot Dashboard", layout="wide")
 st.title("📊 Панель управления Currency Bot")
-
+API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 try:
     API_BASE_URL = st.secrets["API_BASE_URL"]
 except Exception:
     API_BASE_URL = os.getenv("API_BASE_URL", "http://api:8000")
 
-# 1. Секция для тестирования парсера
+
 st.header("🧪 Тестовый парсер валют")
 col1, col2 = st.columns([3, 1])
 
@@ -26,7 +26,7 @@ with col1:
     )
 
 with col2:
-    st.write("")  # Отступ
+    st.write("") 
     st.write("")
     if st.button("🔍 Распознать валюты", type="primary", use_container_width=True):
         with st.spinner('Анализирую текст...'):
@@ -54,11 +54,11 @@ with col2:
             except requests.ConnectionError:
                 st.error("🚫 Не удалось подключиться к серверу анализа.")
 
-# 2. Секция истории конвертаций
+
 st.header("📜 История конвертаций")
 st.markdown("---")
 
-# Настройки отображения
+
 col1, col2, col3 = st.columns([1, 1, 2])
 with col1:
     limit = st.number_input("Количество записей", min_value=1, max_value=100, value=10, step=5)
@@ -70,8 +70,8 @@ with col3:
     if st.button("🔄 Обновить сейчас", type="secondary"):
         st.rerun()
 
-# Загрузка и отображение истории
-@st.cache_data(ttl=10)  # Кешируем на 10 секунд
+
+@st.cache_data(ttl=10) 
 def load_history(limit: int):
     try:
         response = requests.get(f'{API_BASE_URL}/history?limit={limit}', timeout=10)
@@ -81,24 +81,23 @@ def load_history(limit: int):
     except requests.ConnectionError:
         return None
 
-# Загружаем данные
+
 history_data = load_history(limit)
 
 if history_data and history_data.get('conversions'):
     conversions = history_data['conversions']
     
-    # Преобразуем в DataFrame
+
     df = pd.DataFrame(conversions)
     
-    # Добавляем столбец с номером
+    
     df.insert(0, '№', range(1, len(df) + 1))
     
-    # Вычисляем сумму в долларах
+    
     def get_usd_amount(row):
         if row['quote_currency'] == 'USD':
             return row['converted_amount']
-        # Ищем конвертацию в USD среди других записей для этой же суммы? 
-        # Упростим: покажем только если конвертация была в USD
+        
         return None
     
     df['Доллары (USD)'] = df.apply(
@@ -106,11 +105,11 @@ if history_data and history_data.get('conversions'):
         axis=1
     )
     
-    # Форматируем время
+
     df['Время'] = pd.to_datetime(df['created_at']).dt.strftime('%H:%M:%S')
     df['Дата'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
     
-    # Отображаем таблицу
+
     display_df = df[[
         '№', 
         'amount', 
@@ -121,21 +120,21 @@ if history_data and history_data.get('conversions'):
         'Время'
     ]]
     
-    # Переименовываем столбцы для красоты
+
     display_df = display_df.rename(columns={
         'amount': 'Сумма',
         'base_currency': 'Исходная валюта',
         'rate': 'Курс'
     })
     
-    # Форматирование чисел
+
     display_df['Сумма'] = display_df['Сумма'].apply(lambda x: f"{x:,.2f}")
     display_df['Доллары (USD)'] = display_df['Доллары (USD)'].apply(
         lambda x: f"{x:,.2f}" if x is not None else "—"
     )
     display_df['Курс'] = display_df['Курс'].apply(lambda x: f"{x:.4f}")
     
-    # Показываем таблицу
+    
     st.dataframe(
         display_df,
         use_container_width=True,
@@ -151,7 +150,7 @@ if history_data and history_data.get('conversions'):
         }
     )
     
-    # Статистика
+
     col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Всего операций", len(conversions))
@@ -163,7 +162,7 @@ if history_data and history_data.get('conversions'):
             last_update = df['created_at'].iloc[0]
             st.metric("Последняя операция", pd.to_datetime(last_update).strftime('%H:%M'))
     
-    # Экспорт данных
+
     st.markdown("---")
     csv = df.to_csv(index=False, encoding='utf-8')
     st.download_button(
@@ -177,7 +176,7 @@ else:
     st.warning("📭 История конвертаций пуста или недоступна.")
     st.info("Совершите несколько конвертаций через бота, чтобы заполнить историю.")
 
-# Автообновление
+
 if auto_refresh:
     time.sleep(refresh_interval)
     st.rerun()
