@@ -188,7 +188,7 @@ def history(update: Update, context: CallbackContext) -> None:
         lines.append(
             f"{i}. *{conv['amount']:.2f} {conv['base_currency']}* → "
             f"*{conv['converted_amount']:.2f} {conv['quote_currency']}*\n"
-            f"   Курс: {conv['rate']:.4f} | Время: {time_str}\n"
+            f"   Курс: {conv['rate']:.4f} | Дата: {time_str}\n"
         )
     
     
@@ -207,7 +207,7 @@ def _format_moscow_time(value: str) -> str:
         return value.replace("T", " ")[11:16]
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
-    return parsed.astimezone(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
+    return parsed.astimezone(ZoneInfo("Europe/Moscow")).strftime("%d.%m.%Y %H:%M")
 
 
 def _send_rates(update: Update) -> None:
