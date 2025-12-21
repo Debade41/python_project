@@ -1,5 +1,7 @@
 import logging
 import re
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
 from typing import Any, Dict, List
 
 import requests
@@ -163,7 +165,6 @@ def history(update: Update, context: CallbackContext) -> None:
             return
     
     try:
-       
         url = f"{settings.api_base_url}/history?limit={limit}"
         response = requests.get(url, timeout=5)
         response.raise_for_status()
@@ -179,11 +180,10 @@ def history(update: Update, context: CallbackContext) -> None:
         update.message.reply_text("📭 История конвертаций пуста.")
         return
     
- 
     lines = [f"📜 *Последние {len(conversions)} конвертаций:*\n"]
     
     for i, conv in enumerate(conversions, 1):
-        time_str = conv.get("created_at", "").replace("T", " ")[11:16]  # ЧЧ:MM
+        time_str = _format_moscow_time(conv.get("created_at", ""))
         
         lines.append(
             f"{i}. *{conv['amount']:.2f} {conv['base_currency']}* → "
@@ -195,6 +195,19 @@ def history(update: Update, context: CallbackContext) -> None:
     lines.append(f"\n🌐 *Полная история:* http://localhost:8501")
     
     update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
+def _format_moscow_time(value: str) -> str:
+    if not value:
+        return "—"
+    cleaned = value.replace("Z", "+00:00")
+    try:
+        parsed = datetime.fromisoformat(cleaned)
+    except ValueError:
+        return value.replace("T", " ")[11:16]
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(ZoneInfo("Europe/Moscow")).strftime("%H:%M")
 
 
 def _send_rates(update: Update) -> None:
