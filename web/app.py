@@ -6,7 +6,7 @@ import time
 import os
 
 st.set_page_config(page_title="Currency Bot Dashboard", layout="wide")
-st.title("📊 Панель управления Currency Bot")
+st.title("📊 Панель управления ботом")
 
 
 API_BASE_URL = "http://api:8000"
@@ -66,8 +66,8 @@ with col3:
     refresh_clicked = st.button("🔄 Обновить историю", type="secondary", key="refresh_btn")
 
 
-@st.cache_data(ttl=5)
-def load_history_cached(limit: int, force_refresh: bool = False):
+@st.cache_data(ttl=5)#кэширование тут, чтобы не обращаться к бд каждый раз после любого клика, а только после флага true (после нажатия кнопки обновления или через 5 сек)
+def load_history_cached(limit: int, force_refresh: bool = False):#кароч, для ускорения всего этого дела
     """Загружает историю с кешированием"""
     try:
         response = requests.get(f'{API_BASE_URL}/history?limit={limit}', timeout=10)
