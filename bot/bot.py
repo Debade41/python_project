@@ -28,8 +28,10 @@ def _format_amount(value: float) -> str:
 MAIN_MENU_BUTTONS = [
     ["🧪 Анализ текста", "💱 Конвертация"],
     ["🕘 История", "📖 FAQ"],
-    ["🆘 Техподдержка"],
+    ["📈 Курсы", "🆘 Техподдержка"],
 ]
+
+POPULAR_PAIRS = [("USD", "RUB"), ("EUR", "RUB")]
 
 
 def _main_menu_keyboard() -> ReplyKeyboardMarkup:
@@ -114,7 +116,7 @@ def handle_text(update: Update, _: CallbackContext) -> None:
     text = message.text.strip()
     if text.startswith("/"):
         return
-    if text in {"🧪 Анализ текста", "💱 Конвертация", "🕘 История", "📖 FAQ", "🆘 Техподдержка"}:
+    if text in {"🧪 Анализ текста", "💱 Конвертация", "🕘 История", "📖 FAQ", "📈 Курсы", "🆘 Техподдержка"}:
         if text == "🧪 Анализ текста":
             _respond_with_menu_text(
                 update, "Пришлите текст или используйте /analyze <текст>, чтобы получить статистику."
@@ -133,6 +135,8 @@ def handle_text(update: Update, _: CallbackContext) -> None:
                 "• /convert <сумма> <из> <в> — ручная конвертация.\n"
                 "• /history [число] — история операций.",
             )
+        elif text == "📈 Курсы":
+            _send_rates(update)
         elif text == "🆘 Техподдержка":
             _respond_with_menu_text(
                 update,
@@ -191,6 +195,26 @@ def history(update: Update, context: CallbackContext) -> None:
     lines.append(f"\n🌐 *Полная история:* http://localhost:8501")
     
     update.message.reply_text("\n".join(lines), parse_mode="Markdown")
+
+
+def _send_rates(update: Update) -> None:
+    lines = ["Актуальные курсы:"]
+    for base, quote in POPULAR_PAIRS:
+        try:
+            data = call_worker(
+                "/convert",
+                {
+                    "amount": 1,
+                    "base_currency": base,
+                    "quote_currency": quote,
+                },
+            )
+        except requests.RequestException:
+            logger.exception("Failed to fetch rates")
+            update.message.reply_text("Не получается получить курсы. Попробуйте позже.", reply_markup=_main_menu_keyboard())
+            return
+        lines.append(f"1 {base} = {data['converted_amount']:.4f} {quote} (курс {data['rate']:.4f})")
+    _respond_with_menu_text(update, "\n".join(lines))
 def convert(update: Update, context: CallbackContext) -> None:
     args = context.args
     if len(args) != 3:
