@@ -60,7 +60,30 @@ def _respond_with_menu_text(update: Update, text: str) -> None:
     update.effective_message.reply_text(text, reply_markup=_main_menu_keyboard())
 
 
+def analyze(update: Update, context: CallbackContext) -> None:
+    text = " ".join(context.args)
+    if not text:
+        update.message.reply_text("Пришлите текст после команды /analyze")
+        return
+    _send_analysis(update, text)
 
+
+def _send_analysis(update: Update, text: str) -> None:
+    try:
+        data = call_worker("/analyze", {"text": text})
+    except requests.RequestException:
+        logger.exception("Failed to call analyzer")
+        update.message.reply_text("Сервис временно недоступен. Попробуйте позже.")
+        return
+
+    reply = (
+        "Анализ текста:\n"
+        f"Символы: {data['char_count']}\n"
+        f"Слова: {data['word_count']}\n"
+        f"Тональность: {data['sentiment']} (score {data['sentiment_score']})"
+    )
+    update.message.reply_text(reply)
+    _send_currency_conversions(update, text)
 
 
 def _send_currency_conversions(update: Update, text: str) -> None:
@@ -110,7 +133,7 @@ def handle_text(update: Update, _: CallbackContext) -> None:
             _respond_with_menu_text(
                 update,
                 "Частые вопросы:\n"
-                
+                "• /analyze <текст> — получить статистику.\n"
                 "• /convert <сумма> <из> <в> — ручная конвертация.\n"
                 "• /history [число] — история операций.",
             )
@@ -302,6 +325,7 @@ def main() -> None:
 
     dispatcher.add_handler(CommandHandler("start", greet))
     dispatcher.add_handler(CommandHandler("help", greet))
+    dispatcher.add_handler(CommandHandler("analyze", analyze))
     dispatcher.add_handler(CommandHandler("convert", convert))
     dispatcher.add_handler(CommandHandler("history", history))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text))
