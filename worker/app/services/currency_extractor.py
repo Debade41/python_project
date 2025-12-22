@@ -20,8 +20,13 @@ CURRENCY_ALIASES = {
 
 _alias_tokens = sorted({alias for aliases in CURRENCY_ALIASES.values() for alias in aliases}, key=len, reverse=True)
 _alias_group = "|".join(re.escape(token) for token in _alias_tokens)
-
-AMOUNT_RE = r"\d[\d\s\u00A0\u202F]*(?:[.,]\d+)?\s*[кkмm]?"
+_suffix_tokens = sorted([
+    'миллионов', 'миллиона', 'миллион', 
+    'тысяч', 'тысячи', 'тысяча', 
+    'млн', 'тыс', 'к', 'k', 'м', 'm'
+], key=len, reverse=True)
+_suffix_group = "|".join(re.escape(token) for token in _suffix_tokens)
+AMOUNT_RE = r"\d[\d\s\u00A0\u202F]*(?:[.,]\d+)?\s*(?:[кk]|тыс|тысяч|[мm]|млн|миллион|миллионов)?"
 _CURRENCY_RE = rf"(?:{_alias_group}|[A-Za-z]{{3}}|[$€£¥₽])"
 
 CURRENCY_AFTER = re.compile(rf"(?P<amount>{AMOUNT_RE})\s*(?P<currency>{_CURRENCY_RE})", re.IGNORECASE)
@@ -45,29 +50,36 @@ def _normalize_amount(value: str) -> float | None:
         .replace(" ", "")
         .replace(",", ".")
     )
-    multiplier = 1
+    
     if sanitized.endswith('.'):
         sanitized = sanitized[:-1]
-    if sanitized.endswith('к') or sanitized.endswith('k'):
-        multiplier = 1000
-        sanitized = sanitized[:-1]
-    elif sanitized.endswith('тыс'):
-        multiplier = 1000
-        sanitized = sanitized[:-3]
-    elif sanitized.endswith('м') or sanitized.endswith('m'):
-        multiplier = 1_000_000
-        sanitized = sanitized[:-1]
-    elif sanitized.endswith('млн'):
-        multiplier = 1_000_000
-        sanitized = sanitized[:-3]
-
+    suffixes = [
+        ('миллионов', 1_000_000),
+        ('миллиона', 1_000_000),
+        ('миллион', 1_000_000),
+        ('тысяч', 1000),
+        ('тысячи', 1000),
+        ('тысяча', 1000),
+        ('млн', 1_000_000),
+        ('тыс', 1000),
+        ('к', 1000),
+        ('k', 1000),
+        ('м', 1_000_000),
+        ('m', 1_000_000),
+    ]
+    multiplier = 1
+    for suffix, mult in suffixes:
+        if sanitized.endswith(suffix):
+            multiplier = mult
+            sanitized = sanitized[:-len(suffix)]
+            break
 
 
 
 
     sanitized = re.sub(r'[^\d.-]', '', sanitized)
     try:
-        return float(sanitized)
+        return float(sanitized)*multiplier
     except ValueError:
         return None
 
