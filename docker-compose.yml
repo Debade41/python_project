@@ -8,6 +8,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+
     volumes:
       - db_data:/var/lib/postgresql/data
     networks:
@@ -19,6 +20,7 @@ services:
     depends_on:
       - db
     environment:
+      TZ: Europe/Moscow
       DATABASE_URL: ${DATABASE_URL}
       CURRENCY_RATES_URL: ${CURRENCY_RATES_URL}
       REFERENCE_CURRENCY: ${REFERENCE_CURRENCY}
@@ -32,6 +34,8 @@ services:
   bot:
     build: ./bot
     restart: unless-stopped
+    environment:
+      TZ: Europe/Moscow
     depends_on:
       - api
     env_file:
@@ -48,7 +52,8 @@ services:
       - "8501:8501"
     networks:
       - app-network
-    
+    environment:
+      TZ: Europe/Moscow
     
 
 volumes:
