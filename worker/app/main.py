@@ -11,8 +11,7 @@ from . import models
 from .config import get_settings
 from .db import Base, engine, get_db
 from .schemas import (
-    AnalysisRequest,
-    AnalysisResponse,
+    
     ConversionRequest,
     ConversionResponse,
     CurrencyConversionDetail,
@@ -21,7 +20,7 @@ from .schemas import (
     DetectedCurrency,
     HistoryResponse,
 )
-from .services import analyzer
+
 from .services.currency import CurrencyServiceError, convert_currency
 from .services.currency_extractor import extract_currency_mentions
 
@@ -47,20 +46,7 @@ def healthcheck() -> dict[str, str]:
     return {"status": "ok"}
 
 
-@app.post("/analyze", response_model=AnalysisResponse, status_code=status.HTTP_201_CREATED)
-def analyze_text(
-    payload: AnalysisRequest, session: Session = Depends(get_db)
-) -> models.TextAnalysis:
-    metrics = analyzer.analyze_text(payload.text)
-    db_item = models.TextAnalysis(text=payload.text, **metrics)
-    try:
-        session.add(db_item)
-        session.commit()
-        session.refresh(db_item)
-    except SQLAlchemyError as exc:
-        session.rollback()
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="database error") from exc
-    return db_item
+
 
 
 @app.post("/convert", response_model=ConversionResponse, status_code=status.HTTP_201_CREATED)
@@ -169,12 +155,7 @@ def detect_currencies(
 def read_history(limit: int = 10, session: Session = Depends(get_db)) -> HistoryResponse:
     limit = max(min(limit, 50), 1)
     try:
-        analyses: List[models.TextAnalysis] = (
-            session.query(models.TextAnalysis)
-            .order_by(models.TextAnalysis.created_at.desc())
-            .limit(limit)
-            .all()
-        )
+        
         conversions: List[models.CurrencyConversion] = (
             session.query(models.CurrencyConversion)
             .order_by(models.CurrencyConversion.created_at.desc())
@@ -183,4 +164,4 @@ def read_history(limit: int = 10, session: Session = Depends(get_db)) -> History
         )
     except SQLAlchemyError as exc:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="database error") from exc
-    return HistoryResponse(analyses=analyses, conversions=conversions)
+    return HistoryResponse( conversions=conversions)

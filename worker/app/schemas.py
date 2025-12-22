@@ -3,25 +3,8 @@ from typing import List
 
 from pydantic import BaseModel, ConfigDict, Field
 
-
-class AnalysisRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=4000)
-
-
-class AnalysisResponse(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    text: str
-    word_count: int
-    char_count: int
-    sentiment: str
-    sentiment_score: float
-    created_at: datetime
-
-
 class ConversionRequest(BaseModel):
-    amount: float = Field(..., gt=0)  # Оставляем как float
+    amount: float = Field(..., gt=0)  
     base_currency: str = Field(..., min_length=3, max_length=4)
     quote_currency: str = Field(..., min_length=3, max_length=4)
 class ConversionResponse(BaseModel):
@@ -37,7 +20,7 @@ class ConversionResponse(BaseModel):
 
 
 class HistoryResponse(BaseModel):
-    analyses: List[AnalysisResponse]
+    
     conversions: List[ConversionResponse]
 
 

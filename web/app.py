@@ -1,19 +1,15 @@
 import streamlit as st
 import requests
 import pandas as pd
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone
 import time
-import os
 
 st.set_page_config(page_title="Currency Bot Dashboard", layout="wide")
 st.title("📊 Панель управления ботом")
 
-
 API_BASE_URL = "http://api:8000"
 
-
 st.header("Best парсер валют")
-
 
 with st.form("parser_form"):
     test_text = st.text_area(
@@ -50,10 +46,8 @@ if submit_button:
         except requests.ConnectionError:
             st.error("🚫 Не удалось подключиться к серверу анализа.")
 
-
 st.header("📜 История конвертаций")
 st.markdown("---")
-
 
 col1, col2, col3 = st.columns([1, 1, 2])
 with col1:
@@ -65,10 +59,8 @@ with col2:
 with col3:
     refresh_clicked = st.button("🔄 Обновить историю", type="secondary", key="refresh_btn")
 
-
-@st.cache_data(ttl=5)#кэширование тут, чтобы не обращаться к бд каждый раз после любого клика, а только после флага true (после нажатия кнопки обновления или через 5 сек)
-def load_history_cached(limit: int, force_refresh: bool = False):#кароч, для ускорения всего этого дела
-    """Загружает историю с кешированием"""
+@st.cache_data(ttl=5)
+def load_history_cached(limit: int, force_refresh: bool = False):
     try:
         response = requests.get(f'{API_BASE_URL}/history?limit={limit}', timeout=10)
         if response.status_code == 200:
@@ -77,27 +69,21 @@ def load_history_cached(limit: int, force_refresh: bool = False):#кароч, д
     except requests.ConnectionError:
         return None
 
-
 if 'force_refresh' not in st.session_state:
     st.session_state.force_refresh = False
-
 
 if refresh_clicked:
     st.session_state.force_refresh = True
     st.cache_data.clear()  
 
-
 history_data = load_history_cached(limit, st.session_state.force_refresh)
-
 
 st.session_state.force_refresh = False
 
 if history_data and history_data.get('conversions'):
     conversions = history_data['conversions']
     
-    
     df = pd.DataFrame(conversions)
-    
     
     df.insert(0, '№', range(1, len(df) + 1))
     
@@ -106,14 +92,12 @@ if history_data and history_data.get('conversions'):
     df['Время'] = parsed_local.dt.strftime('%H:%M')
     df['Дата'] = parsed_local.dt.strftime('%d.%m.%Y')
     
-    
     def format_number(x):
         return f"{x:,.2f}".replace(",", " ")
     
     df['Сумма'] = df['amount'].apply(format_number)
     df['Результат'] = df['converted_amount'].apply(format_number)
     df['Курс'] = df['rate'].apply(lambda x: f"{x:.4f}")
-    
     
     st.dataframe(
         df[['№', 'Сумма', 'base_currency', 'Результат', 'quote_currency', 'Курс', 'Дата', 'Время']],
@@ -122,8 +106,7 @@ if history_data and history_data.get('conversions'):
         height=400  
     )
     
-   
-    ccol1, col2, col3 = st.columns(3)
+    col1, col2, col3 = st.columns(3)
     with col1:
         st.metric("Всего операций", len(conversions))
     with col2:
