@@ -101,8 +101,10 @@ if history_data and history_data.get('conversions'):
     
     df.insert(0, '№', range(1, len(df) + 1))
     
-    df['Время'] = pd.to_datetime(df['created_at']).dt.strftime('%H:%M:%S')
-    df['Дата'] = pd.to_datetime(df['created_at']).dt.strftime('%Y-%m-%d')
+    parsed_time = pd.to_datetime(df['created_at'], utc=True, errors='coerce')
+    parsed_local = parsed_time.dt.tz_convert('Europe/Moscow')
+    df['Время'] = parsed_local.dt.strftime('%H:%M')
+    df['Дата'] = parsed_local.dt.strftime('%d.%m.%Y')
     
     
     def format_number(x):
@@ -130,7 +132,9 @@ if history_data and history_data.get('conversions'):
     with col3:
         if not df.empty:
             last_time = df['created_at'].iloc[0]
-            st.metric("Последняя операция", pd.to_datetime(last_time).strftime('%H:%M'))
+            last_parsed = pd.to_datetime(last_time, utc=True, errors='coerce')
+            last_local = last_parsed.tz_convert('Europe/Moscow')
+            st.metric("Последняя операция", last_local.strftime('%d.%m.%Y %H:%M'))
     
 else:
     st.warning("📭 История конвертаций пуста или недоступна.")
