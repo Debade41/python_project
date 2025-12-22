@@ -1,5 +1,5 @@
 from __future__ import annotations
-
+import logging
 from typing import List
 
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -20,7 +20,7 @@ from .schemas import (
     DetectedCurrency,
     HistoryResponse,
 )
-from .services import analyzer
+
 from .services.currency import CurrencyServiceError, convert_currency
 from .services.currency_extractor import extract_currency_mentions
 
@@ -103,7 +103,7 @@ def detect_currencies(
         
      
         
-        for quote_currency in valid_targets:
+        for quote_currency in target_currencies:
             try:
                 rate, converted = convert_currency(mention.amount, mention.currency, quote_currency)
             except CurrencyServiceError:
@@ -123,7 +123,7 @@ def detect_currencies(
             
             except SQLAlchemyError as exc:
                 session.rollback()
-          
+                logger = logging.getLogger(__name__)
                 logger.error(f"Failed to save conversion to DB: {exc}")
             
             conversions.append(
