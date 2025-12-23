@@ -28,7 +28,7 @@ def _format_amount(value: float) -> str:
 
 
 MAIN_MENU_BUTTONS = [
-    ["🧪 Анализ текста", "💱 Конвертация"],
+    ["💱 Конвертация"],
     ["🕘 История", "📖 FAQ"],
     ["📈 Курсы", "🆘 Техподдержка"],
 ]
@@ -49,7 +49,7 @@ def call_worker(endpoint: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 def greet(update: Update, _: CallbackContext) -> None:
     text = (
-        "Привет! Я анализирую текст и конвертирую валюту.\n"
+        "Привет! Я конвертирую валюту.\n"
         "Отправьте любое сообщение и бот найдёт суммы и сконвертирует их.\n"
         "Используйте /convert <сумма> <из> <в> для явной конвертации или /history <число> для просмотра истории."
     )
@@ -58,32 +58,6 @@ def greet(update: Update, _: CallbackContext) -> None:
 
 def _respond_with_menu_text(update: Update, text: str) -> None:
     update.effective_message.reply_text(text, reply_markup=_main_menu_keyboard())
-
-
-def analyze(update: Update, context: CallbackContext) -> None:
-    text = " ".join(context.args)
-    if not text:
-        update.message.reply_text("Пришлите текст после команды /analyze")
-        return
-    _send_analysis(update, text)
-
-
-def _send_analysis(update: Update, text: str) -> None:
-    try:
-        data = call_worker("/analyze", {"text": text})
-    except requests.RequestException:
-        logger.exception("Failed to call analyzer")
-        update.message.reply_text("Сервис временно недоступен. Попробуйте позже.")
-        return
-
-    reply = (
-        "Анализ текста:\n"
-        f"Символы: {data['char_count']}\n"
-        f"Слова: {data['word_count']}\n"
-        f"Тональность: {data['sentiment']} (score {data['sentiment_score']})"
-    )
-    update.message.reply_text(reply)
-    _send_currency_conversions(update, text)
 
 
 def _send_currency_conversions(update: Update, text: str) -> None:
@@ -118,12 +92,8 @@ def handle_text(update: Update, _: CallbackContext) -> None:
     text = message.text.strip()
     if text.startswith("/"):
         return
-    if text in {"🧪 Анализ текста", "💱 Конвертация", "🕘 История", "📖 FAQ", "📈 Курсы", "🆘 Техподдержка"}:
-        if text == "🧪 Анализ текста":
-            _respond_with_menu_text(
-                update, "Пришлите текст или используйте /analyze <текст>, чтобы получить статистику."
-            )
-        elif text == "💱 Конвертация":
+    if text in {"💱 Конвертация", "🕘 История", "📖 FAQ", "📈 Курсы", "🆘 Техподдержка"}:
+        if text == "💱 Конвертация":
             _respond_with_menu_text(
                 update, "Команда /convert <сумма> <из> <в> рассчитает конвертацию, например /convert 10 USD RUB."
             )
@@ -133,7 +103,6 @@ def handle_text(update: Update, _: CallbackContext) -> None:
             _respond_with_menu_text(
                 update,
                 "Частые вопросы:\n"
-                "• /analyze <текст> — получить статистику.\n"
                 "• /convert <сумма> <из> <в> — ручная конвертация.\n"
                 "• /history [число] — история операций.",
             )
@@ -325,7 +294,6 @@ def main() -> None:
 
     dispatcher.add_handler(CommandHandler("start", greet))
     dispatcher.add_handler(CommandHandler("help", greet))
-    dispatcher.add_handler(CommandHandler("analyze", analyze))
     dispatcher.add_handler(CommandHandler("convert", convert))
     dispatcher.add_handler(CommandHandler("history", history))
     dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_text))
